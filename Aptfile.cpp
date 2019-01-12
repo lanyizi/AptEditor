@@ -5,7 +5,7 @@
 
 bool AptFile::Convert(std::string filename)
 {
-	std::tr2::sys::path file(filename);
+	std::filesystem::path file(filename);
 	if (file.extension() == ".xml")
 		return XMLToApt(filename);
 	else if (file.extension() == ".apt")
@@ -22,9 +22,9 @@ bool AptFile::Convert(std::string filename)
 
 bool AptFile::AptToXML(std::string filename)
 {
-	std::tr2::sys::path aptfile(filename);
-	std::tr2::sys::path constfile(aptfile.basename() + ".const");
-	std::tr2::sys::path xmlfile(aptfile.basename() + ".xml");
+	auto aptfile = std::filesystem::path{filename};
+	auto constfile = std::filesystem::path{aptfile}.replace_extension(".const");
+	auto xmlfile = std::filesystem::path{aptfile}.replace_extension(".xml");
 
 	if (!fileExists(aptfile))
 	{
@@ -655,9 +655,9 @@ bool AptFile::AptToXML(std::string filename)
 
 bool AptFile::XMLToApt(std::string filename)
 {
-	std::tr2::sys::path xmlfile(filename);
-	std::tr2::sys::path constfile(xmlfile.basename() + ".const");
-	std::tr2::sys::path aptfile(xmlfile.basename() + ".apt");
+	auto xmlfile = std::filesystem::path{filename};
+	auto constfile = std::filesystem::path{xmlfile}.replace_extension(".const");
+	auto aptfile = std::filesystem::path{xmlfile}.replace_extension(".apt");
 
 	if (xmlfile.extension() != ".xml")
 	{
@@ -895,8 +895,8 @@ bool AptFile::XMLToApt(std::string filename)
 			sh->fontheight = entry->FloatAttribute("height");
 			sh->readonly = entry->IntAttribute("readonly");
 			sh->multiline = entry->IntAttribute("multiline");
-
-			entry2 = entry->FirstChildElement("ettext");
+            sh->wordwrap = entry->IntAttribute("wordwrap");
+            entry2 = entry->FirstChildElement("ettext");
 			if (entry2)
 			{
 				sh->text = entry2->Attribute("text");

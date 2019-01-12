@@ -13,7 +13,7 @@
 #define add(x) *((uint8_t **)&x) += (uint32_t)aptbuffer; 
 
 
-inline bool fileExists(std::tr2::sys::path file)
+inline bool fileExists(std::filesystem::path file)
 {
 	std::fstream test(file);
 	return !test.fail();

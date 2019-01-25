@@ -3,8 +3,8 @@
 #include "Util.hpp"
 #include <cctype>
 #include <ciso646>
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <optional>
@@ -20,7 +20,6 @@ using DataReader = AptParseUtilities::UnparsedData::UnparsedDataView;
 
 using Address = std::uint32_t;
 using AddressDifference = std::int32_t;
-
 
 template <typename T>
 void readerReadValue(DataReader& reader, T& value) {
@@ -98,7 +97,7 @@ struct AptType {
             return this->overridenSize;
         }
 
-        if(std::holds_alternative<std::string>(this->value)) {
+        if (std::holds_alternative<std::string>(this->value)) {
             return std::get<std::string>(this->value).size() + 1;
         }
 
@@ -326,9 +325,9 @@ struct AptObjectPool {
                     offset + constructed.size() > address) {
                     const auto errorMessage =
                         std::string{ errorText } + " after: " + after.typeName +
-                        " at " + std::to_string(address) + "; size " + std::to_string(after.size()) +
-                        "; requested " + constructed.typeName + " at " +
-                        std::to_string(offset);
+                        " at " + std::to_string(address) + "; size " +
+                        std::to_string(after.size()) + "; requested " +
+                        constructed.typeName + " at " + std::to_string(offset);
                     throw std::runtime_error{ errorMessage };
                 }
             }
@@ -346,7 +345,7 @@ struct AptObjectPool {
             const auto& typePointedTo = this->getType(pointer.typePointedTo);
 
             if (pointer.address == 0) {
-                //null pointer
+                // null pointer
                 return;
             }
 
@@ -366,8 +365,10 @@ struct AptObjectPool {
             }
 
             const auto& fetching = this->objectInstances.at(pointer.address);
-            if (const auto alreadyFetching = this->fetching.find(pointer.address); alreadyFetching != this->fetching.end()) {
-                if (const auto&[address, typeName] = *alreadyFetching; typeName == fetching.typeName) {
+            if (const auto alreadyFetching = this->fetching.find(pointer.address);
+                alreadyFetching != this->fetching.end()) {
+                if (const auto& [address, typeName] = *alreadyFetching;
+                    typeName == fetching.typeName) {
                     return; // skip objects already being fetched
                 }
             }
@@ -391,18 +392,22 @@ struct AptObjectPool {
             // save array metadata
             const auto begin = pointerValue.address;
             const auto end = pointerValue.address + length * elementSize;
-            if(not this->arrays.empty()) {
-                const auto found = this->arrays.lower_bound(end);
-                if(found != this->arrays.begin()) {
-                    const auto [previousBegin, previousEnd] = *std::prev(found);
-                    // if it's not the same array...
-                    if(not (previousBegin == begin and previousEnd == end)) {
-                        if(previousEnd > begin) {
-                            throw std::runtime_error{ "Overlapping arrays!" };
-                        }
+            if(begin == end) {
+                // dont save empty array
+                return;
+            }
+
+            const auto found = this->arrays.lower_bound(end);
+            if (found != this->arrays.begin()) {
+                const auto [previousBegin, previousEnd] = *std::prev(found);
+                // if it's not the same array...
+                if (not(previousBegin == begin and previousEnd == end)) {
+                    if (previousEnd > begin) {
+                        throw std::runtime_error{ "Overlapping arrays!" };
                     }
                 }
             }
+
             this->arrays.emplace(begin, end);
         }
         else {
@@ -420,7 +425,6 @@ struct AptObjectPool {
     std::map<Address, AptType> objectInstances;
     std::map<Address, Address> arrays; //(begin address, end address)
     std::map<Address, std::string> fetching;
-    
 };
 
 } // namespace Apt::AptTypes

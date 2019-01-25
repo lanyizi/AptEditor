@@ -72,8 +72,8 @@ Button =
     Rect: bounds,
     Unsigned32: triangleCount,
     Unsigned32: vertexCount,
-    Unsigned32: vertexDataOffset, /* TODO: parse vertexDataOffset */
-    Unsigned32: triangleDataOffset, /* TODO: parse triangleDataOffset */
+    Unsigned32: vertexArrayAddress,
+    Unsigned32: triangleArrayAddress,
     PointerToArray > ButtonRecord: buttonRecords,
     PointerToArray > ButtonAction: buttonActions,
     Unsigned32: unknown2; /* always zero as far as I can see */
@@ -93,8 +93,8 @@ Movie =
     PointerToArray > Frame: frames, /* offset of frame data */
     Unsigned32: pointer, /* always zero, used at runtime */
     PointerToArray > Pointer > Character: characters,  /* offset of character data */
-    Unsigned32: screensizex,
-    Unsigned32: screensizey,
+    Unsigned32: screenWidth,
+    Unsigned32: screenHeight,
     Unsigned32: millisecondsPerFrame,  /* always 33 as far as I can see */
     PointerToArray > Import: imports,  /* offset of imports data */
     PointerToArray > Export: exports,  /* offset of exports data */
@@ -199,3 +199,8 @@ ClipEvent =
     Unsigned8: keyCode,
     Unsigned32: offsetToNext,
     Unsigned32: actionDataOffset; /* TODO: parse ClipEvent */
+
+Triangle =
+    Unsigned16: vertex1,
+    Unsigned16: vertex2,
+    Unsigned16: vertex3;

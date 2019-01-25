@@ -189,6 +189,29 @@ std::string aptToXml(const FileSystem::path aptFileName) {
         const auto& outputMovie =
             pool.constructObject(pool.getType("Movie"), entryOffset);
         pool.fetchPointedObjects(outputMovie);
+
+        //fetch triangles and vertexes
+        for(const auto& [address, object] : pool.objectInstances) {
+            if(pool.isSameOrDerivedFrom(object, "Button")) {
+                auto vertexes = pool.getType("PointerToArray > Float32Vector2");
+                vertexes.at("length") = object.at("vertexCount");
+                auto& vertexArrayPointer =
+                    std::get<AptTypePointer>(vertexes.at("pointer").value);
+                vertexArrayPointer.address =
+                    std::get<Address>(object.at("vertexArrayAddress").value);
+
+                pool.fetchPointedObjects(vertexes);
+
+                auto triangles = pool.getType("PointerToArray > Triangle");
+                triangles.at("length") = object.at("triangleCount");
+                auto& triangleArrayPointer =
+                    std::get<AptTypePointer>(triangles.at("pointer").value);
+                triangleArrayPointer.address =
+                    std::get<Address>(object.at("triangleArrayAddress").value);
+
+                pool.fetchPointedObjects(triangles);
+            }
+        }
     }
 
     auto xml = tinyxml2::XMLDocument{};

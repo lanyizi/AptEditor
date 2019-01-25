@@ -216,7 +216,8 @@ struct AptObjectPool {
             return false;
         }
 
-        return this->isSameOrDerivedFrom(this->getType(derived.baseTypeName));
+        return this->isSameOrDerivedFrom(this->getType(derived.baseTypeName),
+                                         baseTypeName);
     }
 
     std::optional<std::string> checkForDerivedTypes(const AptType& base) const {

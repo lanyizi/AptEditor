@@ -49,10 +49,10 @@ DerivedTypeData parseDerivedTypes(std::string_view deriveDefiniton) {
         const auto typeTagStringValue = trim(readUntil(deriveDefiniton, ">"));
         const auto typeID = [string = typeTagStringValue] {
             try {
-                return std::stoul(std::string{ string });
+                return std::stoul(std::string{ string }, nullptr, 0);
             }
             catch(const std::exception&) {
-                throw std::invalid_argument{ "For now typeID can only be Unsigned32" };
+                throw std::invalid_argument{ "Currently typeID must be integral" };
             }
         }();
         const auto derivedType = trim(readUntil(deriveDefiniton, "/"));

@@ -233,11 +233,22 @@ struct AptObjectPool {
         const auto& typeMap = typeData.derivedTypes->typeMap;
         const auto& derivedTypeTag = typeData.derivedTypes->typeTag;
         const auto& derivedTypeIDHolder = base.at(derivedTypeTag).value;
-        if (not std::holds_alternative<std::uint32_t>(derivedTypeIDHolder)) {
-            throw std::invalid_argument{ "Currently typeID can only be Unsigned32" };
-        }
 
-        const auto derivedTypeID = std::get<std::uint32_t>(derivedTypeIDHolder);
+        const auto derivedTypeIDVisitor = [](const auto& value) {
+            using Type = std::decay_t<decltype(value)>;
+            if constexpr(std::is_same_v<Type, Unsigned24>) {
+                return value.value;
+            }
+            else if constexpr(std::is_integral_v<Type>){
+                return value;
+            }
+            else {
+                throw std::invalid_argument{ "Currently typeID must be integral" };
+            }
+        };
+        const auto derivedTypeID =
+            std::visit<std::uint32_t>(derivedTypeIDVisitor, derivedTypeIDHolder);
+
         const auto derivedType = typeMap.find(derivedTypeID);
         if (derivedType == typeMap.end()) {
             throw std::runtime_error{ "Unknown derived type id:" +
@@ -246,6 +257,7 @@ struct AptObjectPool {
         const auto& derivedTypeName = derivedType->second;
 
         if (const auto derivedDerived =
+                this->checkForDerivedTypes(this->getType(derivedTypeName));
                 this->checkForDerivedTypes(this->getType(derivedTypeName));
             derivedDerived.has_value()) {
             return derivedDerived;
@@ -406,4 +418,4 @@ struct AptObjectPool {
     std::map<Address, std::string> fetching;
 };
 
-} // namespace Apt::AptTypes
+} // namespace Apt::AptTypeses

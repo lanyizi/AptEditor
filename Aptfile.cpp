@@ -26,13 +26,13 @@ bool AptFile::AptToXML(std::string filename)
 	auto constfile = std::filesystem::path{aptfile}.replace_extension(".const");
 	auto xmlfile = std::filesystem::path{aptfile}.replace_extension(".xml");
 
-	if (!fileExists(aptfile))
+	if (!std::filesystem::exists(aptfile))
 	{
 		std::cout << "Sorry but " << aptfile.filename() << " is missing" << std::endl;
 		return false;
 	}
 
-	if (!fileExists(constfile))
+	if (!std::filesystem::exists(constfile))
 	{
 		std::cout << "Sorry but " << constfile.filename() << " is missing" << std::endl;
 		return false;
@@ -40,14 +40,14 @@ bool AptFile::AptToXML(std::string filename)
 
 	//read the const file into a buffer
 	std::ifstream conststream(constfile, std::ios::binary | std::ios::in);
-	uint32_t constsize = size(conststream);
+	auto constsize = static_cast<std::size_t>(std::filesystem::file_size(constfile));
 	uint8_t* constbuffer = new uint8_t[constsize];
 	conststream.read((char*)constbuffer, constsize);
 	conststream.close();
 
 	//read the apt file into a buffer
 	std::ifstream aptstream(aptfile, std::ios::binary | std::ios::in);
-	uint32_t aptsize = size(aptstream);
+	auto aptsize = static_cast<std::size_t>(std::filesystem::file_size(aptfile));
 	uint8_t* aptbuffer = new uint8_t[aptsize];
 	aptstream.read((char*)aptbuffer, aptsize);
 	aptstream.close();
@@ -665,7 +665,7 @@ bool AptFile::XMLToApt(std::string filename)
 		return false;
 	}
 
-	if (!fileExists(xmlfile))
+	if (!std::filesystem::exists(xmlfile))
 	{
 		std::cout << "Sorry but " << xmlfile.filename() << " is missing" << std::endl;
 		return false;

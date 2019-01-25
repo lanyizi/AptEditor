@@ -1,0 +1,201 @@
+Rect =
+    Float32: left,
+    Float32: top,	
+    Float32: right,
+    Float32: bottom;
+
+Float32Matrix2x2 =
+    Float32: m00,
+    Float32: m01,
+    Float32: m10,
+    Float32: m11;
+
+Float32Vector2 =
+    Float32: x,
+    Float32: y;
+
+Float32Vector4 = 
+    Float32: x,
+    Float32: y,
+    Float32: z,
+    Float32: w;
+
+ColorRGBA =
+    Unsigned8: red,
+    Unsigned8: green,
+    Unsigned8: blue,
+    Unsigned8: alpha;
+
+Character =
+    Unsigned32: type,
+    Unsigned32: signature,
+$Derive:
+    type  1 > Shape /
+    type  2 > EditText /
+    type  3 > Font /
+    type  4 > Button /
+    type  5 > Sprite /
+    type  6 > Sound /
+    type  7 > Image /
+    type  8 > Morph /
+    type  9 > Movie /
+    type 10 > StaticText /
+    type 11 > None /
+    type 12 > Video;
+
+Shape =
+    $Base: Character,
+    Rect: bounds,
+    Unsigned32: geometry;
+
+EditText =
+    $Base: Character,
+    Rect: bounds,
+    Unsigned32: font,
+    Unsigned32: alignment,
+    Unsigned32: color,
+    Float32: fontHeight,
+    Unsigned32: readOnly,
+    Unsigned32: multiLine,
+    Unsigned32: wordWrap,
+    Pointer > String: text,
+    Pointer > String: variable;
+
+Font =
+    $Base: Character,
+    Pointer > String: name,
+    PointerToArray > GlyphID: glyphData; /* TODO: parse glyph data */
+
+Button =
+    $Base: Character,
+    Unsigned32: unknown, /* always zero as far as I can see */
+    Rect: bounds,
+    Unsigned32: triangleCount,
+    Unsigned32: vertexCount,
+    Unsigned32: vertexDataOffset, /* TODO: parse vertexDataOffset */
+    Unsigned32: triangleDataOffset, /* TODO: parse triangleDataOffset */
+    PointerToArray > ButtonRecord: buttonRecords,
+    PointerToArray > ButtonAction: buttonActions,
+    Unsigned32: unknown2; /* always zero as far as I can see */
+
+Sprite =
+    $Base: Character,
+    PointerToArray > Frame: frames,
+    Unsigned32: pointer; //always zero, used at runtime
+
+Morph =
+    $Base: Character,
+    Unsigned32: startShape,
+    Unsigned32: endShape;
+
+Movie =
+    $Base: Character,
+    PointerToArray > Frame: frames, /* offset of frame data */
+    Unsigned32: pointer, /* always zero, used at runtime */
+    PointerToArray > Pointer > Character: characters,  /* offset of character data */
+    Unsigned32: screensizex,
+    Unsigned32: screensizey,
+    Unsigned32: millisecondsPerFrame,  /* always 33 as far as I can see */
+    PointerToArray > Import: imports,  /* offset of imports data */
+    PointerToArray > Export: exports,  /* offset of exports data */
+    Unsigned32: count; /* always zero, used at runtime */
+
+Image =
+    $Base: Character,
+    Unsigned32: textureID;
+
+StaticText =
+    $Base: Character,
+    Rect: bounds,
+    Float32Matrix2x2: rotationAndScale,
+    Float32Vector2: translation,
+    PointerToArray > TextRecord: records;
+
+/* End derived from Character */
+
+FrameItem =
+    Unsigned32: type,
+$Derive:
+    type 1 > Action /
+    type 2 > FrameLabel /
+    type 3 > PlaceObject /
+    type 4 > RemoveObject /
+    type 5 > BackgroundColor /
+    type 8 > InitAction;
+
+Action =
+    $Base: FrameItem,
+    Unsigned32: actionDataOffset; /* TODO: parse actionDataOffset */
+
+FrameLabel =
+    $Base: FrameItem,
+    Pointer > String: name,
+    Unsigned32: flags, /* always 0x70000 as far as I can see */
+    Unsigned32: frameID;
+
+PlaceObject =
+    $Base: FrameItem,
+    Unsigned32: flags, /* matches with PlaceObjectFlags */
+    Int32: depth,
+    Int32: character,
+    Float32Matrix2x2: rotationAndScale,
+    Float32Vector2: translation,
+    ColorRGBA: color,
+    Unsigned32: unknown, /* always zero as far as I can see */
+    Float32: ratio,
+    Pointer > String: name,
+    Int32: clipdepth,
+    Pointer > PointerToArray > ClipEvent: clipEvent;
+
+RemoveObject =
+    $Base: FrameItem,
+    Int32: depth;
+
+BackgroundColor =
+    $Base: FrameItem,
+    ColorRGBA: color;
+
+InitAction =
+    $Base: FrameItem,
+    Unsigned32: sprite,
+    Unsigned32: actionDataOffset; /* TODO: parse actionDataOffset */
+
+/* End derived from FrameItem */
+
+GlyphID =
+    Unsigned8: glyphID;
+
+ButtonRecord =
+    Unsigned8: flags, /* matches with ButtonFlags */
+    Unsigned24: reserved,
+    Unsigned32: character,
+    Int32: depth,
+    Float32Matrix2x2: rotationAndScale,
+    Float32Vector2: translation,
+    Float32Vector4: color, /* always 1.0,1.0,1.0,1.0 as far as I can see */
+    Float32Vector4: unknown; /* always zero as far as I can see */
+
+ButtonAction = 
+    Unsigned8: flags, /* matches with ButtonActionFlags */
+    Unsigned16: keyCode,
+    Unsigned8: reserved,
+    Unsigned32: actionDataOffset; /* TODO: parse actionDataOffset */
+
+Frame =
+    PointerToArray > Pointer > FrameItem: frameItems;
+
+Import =
+    Pointer > String: movie,
+    Pointer > String: name,
+    Unsigned32: character,
+    Unsigned32: pointer; /* always zero, used at runtime */
+
+Export =
+    Pointer > String: name,
+    Unsigned32: character;
+
+ClipEvent =
+    Unsigned24: flags,
+    Unsigned8: keyCode,
+    Unsigned32: offsetToNext,
+    Unsigned32: actionDataOffset; /* TODO: parse ClipEvent */

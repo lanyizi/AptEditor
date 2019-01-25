@@ -1,6 +1,7 @@
 // (C) Stephan Vedder
 #ifndef DLL_PROJECT
 #include "Aptfile.hpp"
+#include "AptEditor.hpp"
 
 int main(int argc, char** argv)
 {
@@ -22,7 +23,17 @@ int main(int argc, char** argv)
 		break;
 	}
 
-	if (AptFile::Convert(filename))
+	try {
+		std::cout << Apt::AptEditor::aptToXml(filename) << std::endl;
+	}
+	catch(const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    
+    system("pause");
+    return 1;
+
+    if (AptFile::Convert(filename))
 		std::cout << "Succesfully converted " << filename << " !" << std::endl;
 	else
 		std::cout << "Failed to convert " << filename << " !" << std::endl;

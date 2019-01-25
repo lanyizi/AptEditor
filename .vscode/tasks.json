@@ -4,6 +4,12 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "checkconsole",
+            "type": "shell",
+            "command": "Write-Output --------------------------------------------------------------------------",
+            "group": "build"
+        },
+        {
             "label": "build",
             "type": "shell",
             "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\MSBuild\\15.0\\Bin\\msbuild",
@@ -19,7 +25,8 @@
                 "reveal": "silent"
             },
             // Use the standard MS compiler pattern to detect errors, warnings and infos
-            "problemMatcher": "$msCompile"
+            "problemMatcher": "$msCompile",
+            "dependsOn": "checkconsole"
         }
     ]
 }

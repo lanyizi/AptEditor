@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "(Windows) Compile & Launch",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/Debug/AptEditor.exe",
@@ -13,7 +13,19 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
-            "externalConsole": true
-        }
+            "externalConsole": true,
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "(Windows) Direct Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/Debug/AptEditor.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+        },
     ]
 }

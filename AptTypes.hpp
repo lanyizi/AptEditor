@@ -245,7 +245,8 @@ struct AptObjectPool {
         }
         const auto& derivedTypeName = derivedType->second;
 
-        if (const auto derivedDerived = this->checkForDerivedTypes(derivedTypeName);
+        if (const auto derivedDerived =
+                this->checkForDerivedTypes(this->getType(derivedTypeName));
             derivedDerived.has_value()) {
             return derivedDerived;
         }

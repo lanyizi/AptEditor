@@ -51,7 +51,7 @@ void writeObject(tinyxml2::XMLElement* node, const AptObjectPool& pool,
         writeNode(node, pool, name, value);
     };
     std::visit(visitor, object.value);
-    if(not object.baseTypeName.empty()) {
+    if(object.typeName != object.baseTypeName) {
         const auto& [typeTag, derivedTypeMap] =
             pool.types.at(object.baseTypeName).derivedTypes.value();
         node->SetAttribute(typeTag.c_str(), object.typeName.c_str());
@@ -132,9 +132,8 @@ void writeNode<AptType::MemberArray>(tinyxml2::XMLElement* node,
     for (const auto& [memberName, member] : value) {
         auto* currentNode = node;
         if (std::holds_alternative<AptType::MemberArray>(member.value)) {
-            const auto& baseTypeName =
-                member.baseTypeName.empty() ? member.typeName : member.baseTypeName;
-            auto* newNode = node->GetDocument()->NewElement(baseTypeName.c_str());
+            auto* newNode =
+                node->GetDocument()->NewElement(member.baseTypeName.c_str());
             node->InsertEndChild(newNode);
             currentNode = newNode;
             currentNode->SetAttribute("name", memberName.c_str());
@@ -196,10 +195,6 @@ std::string aptToXml(const FileSystem::path aptFileName) {
             parent = array;
             arrayEnd = arrayMarker->second;
         }
-
-        const auto& baseTypeName =
-            object.baseTypeName.empty() ? object.typeName : object.baseTypeName;
-
         /*const auto commentText = makeString("Following ",
                                             baseTypeName,
                                             " address=\"",
@@ -210,7 +205,7 @@ std::string aptToXml(const FileSystem::path aptFileName) {
         auto* comment = parent->GetDocument()->NewComment(commentText.c_str());
         parent->InsertEndChild(comment);*/
 
-        auto* node = parent->GetDocument()->NewElement(baseTypeName.c_str());
+        auto* node = parent->GetDocument()->NewElement(object.baseTypeName.c_str());
         parent->InsertEndChild(node);
         node->SetAttribute("address", address);
         writeObject(node, pool, {}, object);

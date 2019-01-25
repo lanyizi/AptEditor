@@ -120,7 +120,7 @@ const AptType* getBuiltInType(const std::string_view typeName) {
         const auto declareType = [](auto&& name, auto&& value, std::size_t size = 0) {
             return std::pair{ std::forward<decltype(name)>(name),
                               AptType{ std::string{ name },
-                                       std::string{},
+                                       std::string{ name },
                                        std::forward<decltype(value)>(value),
                                        size } };
         };
@@ -202,36 +202,21 @@ struct AptObjectPool {
         throw std::out_of_range{ "Cannot find type " + std::string{ typeName } };
     }
 
-    bool isDerivedFrom(const AptType& derived,
+    bool isSameOrDerivedFrom(const AptType& derived,
                        const std::string_view baseTypeName) const {
-        // check if typePointedTo is base of existing object
-        const auto base = this->types.find(baseTypeName);
-        if (base == this->types.end()) {
-            throw std::invalid_argument{ "Base type does not exist!" };
+        if(derived.typeName == baseTypeName) {
+            return true;
         }
-        const auto& [type, derivedTypesData] = base->second;
 
-        if (not derivedTypesData.has_value()) {
+        if(derived.baseTypeName == baseTypeName) {
+            return true;
+        }
+
+        if(derived.baseTypeName == derived.typeName) {
             return false;
         }
 
-        try {
-            const auto& [typeTag, derivedTypeMap] = *derivedTypesData;
-            const auto& typeIDHolder = derived.at(typeTag).value;
-            if (not std::holds_alternative<std::uint32_t>(typeIDHolder)) {
-                return false;
-            }
-            const auto typeID = std::get<std::uint32_t>(typeIDHolder);
-            const auto& realDerivedTypeName = derivedTypeMap.at(typeID);
-
-            if (realDerivedTypeName != derived.typeName) {
-                return false;
-            }
-        }
-        catch (const std::out_of_range&) {
-            return false;
-        }
-        return true;
+        return this->isSameOrDerivedFrom(this->getType(derived.baseTypeName));
     }
 
     std::optional<std::string> checkForDerivedTypes(const AptType& base) const {
@@ -259,18 +244,11 @@ struct AptObjectPool {
         }
         const auto& derivedTypeName = derivedType->second;
 
-        /*
-            Commented out because actually constructObject will reconstruct derived
-            type from scratch
-
-            // copy (already initialized) base members to derived instance
-            const auto baseMemberCount =
-                std::get<AptType::MemberArray>(base.value).size();
-            auto derived = derivedType->second;
-            for (auto i = std::size_t{ 0 }; i < baseMemberCount; ++i) {
-                derived.at(i) = base.at(i);
-            }
-        */
+        if (const auto derivedDerived = this->checkForDerivedTypes(derivedTypeName);
+            derivedDerived.has_value()) {
+            return derivedDerived;
+        }
+        
         return derivedTypeName;
     }
 
@@ -354,8 +332,7 @@ struct AptObjectPool {
                 const auto& [address, object] = *existing;
                 // if an object already exists in the same location, check if they are
                 // of same type, or if existing object is derived from pointedToType
-                if ((object.typeName != typePointedTo.typeName) and
-                    (not isDerivedFrom(object, typePointedTo.typeName))) {
+                if ((not isSameOrDerivedFrom(object, typePointedTo.typeName))) {
                     throw std::runtime_error{ "Another type already exists here: " +
                                               object.typeName };
                 }

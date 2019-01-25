@@ -82,6 +82,7 @@ TypeDataMapEntry readTypeDefinition(std::string_view typeDefinition,
     auto typeData = TypeData{};
     const auto typeName = trim(readUntil(typeDefinition, "="));
     typeData.type.typeName = typeName;
+    typeData.type.baseTypeName = typeName;
     typeData.type.value = AptType::MemberArray{};
     auto& memberArray = std::get<AptType::MemberArray>(typeData.type.value);
     while (not typeDefinition.empty()) {

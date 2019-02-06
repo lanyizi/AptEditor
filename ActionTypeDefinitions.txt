@@ -1,0 +1,321 @@
+/** Basic **/
+
+    /* End the execution of the current Action */
+    End = $Base: Instruction; 
+
+    /* Pops a value from the stack, converts it to integer and pushes it back */
+    ToInteger = $Base: Instruction;
+
+    /* Pop a string from stack and print it to console. Used for debug purposes. */
+    Trace = $Base: Instruction; 
+
+    /* Pops a property name and an object from the stack. Then deletes the property in that object */
+    Delete = $Base: Instruction;
+
+    /* Pops a property name from the stack. Then deletes the property */
+    Delete2 = $Base: Instruction;
+
+    /* Pops name and value. Then set the variable. If value is already defined, overwrite it */
+    DefineLocal  = $Base: Instruction;
+
+    /* Initializes an array from the stack */
+    InitArray = $Base: Instruction;
+
+    /* Pops a value from the stack, converts it to string and pushes it back */
+    ToString = $Base: Instruction;
+
+    /* Pops an object from stack and enumerates it's slots */
+    Enumerate2 = $Base: Instruction;
+
+    /* Get a value from stack and store it inside a register */
+    SetRegister = 
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Unsigned32: registerID;
+
+    /* Declare a pool of constants that will be used in the current scope. Mostly used at start. */
+    ConstantPool = 
+        $Base: Instruction, 
+        PaddingForAlignment > 4: align,
+        Unsigned32: numberOfConstants,
+        PointerToArray numberOfConstants > Unsigned32: constantIDs;
+
+/** Arithmetic **/
+
+    Add         = $Base: Instruction; /* An instruction that pops two values and adds them. Result on stack */
+    Subtract    = $Base: Instruction; /* An instruction that pops two values and subtracts them. Result on stack */
+    Multiply    = $Base: Instruction; /* Pop two values from stack, convert them to float and then multiply them. Result on stack */
+    Divide      = $Base: Instruction; /* Pop two values from stack, convert them to float and then divide them. Result on stack */
+    Add2        = $Base: Instruction; /* Pop two values from stack and add them. Can concatenate strings. Result on stack */
+    Increment   = $Base: Instruction; /* Pop a value from stack, increments it and pushes it back */
+
+/** Branching **/
+
+
+    /* Jump to the byte offset (parameter) */
+    BranchAlways =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Int32: offset;
+
+    /* Pops a bool from the stack. If the bool is true jump to the byte offset (parameter) */
+    BranchIfTrue =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Int32: offset;
+
+/** Function **/
+
+    /* Call a function that is defined in the current scope */
+    CallFunction = $Base: Instruction;
+    
+    /* Return out of the current function back to the calling point */
+    Return = $Base: Instruction;
+
+    /* Call an anonymous method that is on the stack. Function arguments are also popped from the stack */
+    CallMethod = $Base: Instruction;
+
+    /* Call a function that is defined in the current scope */
+    EA_CallFunc = $Base: Instruction;
+    
+    /*  Call an anonymous method that is on the stack. Function arguments are also popped from the stack */
+    EA_CallMethodPop = $Base: Instruction;
+
+    /* Declare a new named or anonymous function (depending on function name) that will either be pushed to stack or set as a variable. */
+    DefineFunction2Parameter =
+        Int32: register,
+        Pointer > String: parameter;
+
+    DefineFunction2 =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: name,
+        Unsigned32: numberOfParameters,
+        Unsigned8: numberOfRegisters,
+        Unsigned24: flags,
+        PointerToArray numberOfParameters > DefineFunction2Parameter: registerAndParameters,
+        Int32: size,
+        Unsigned32: unknown1,
+        Unsigned32: unknown2;
+
+    /* Declare a new named or anonymous function (depending on function name) that will either be pushed to stack or set as a variable. */
+    DefineFunction =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: name,
+        Unsigned32: numberOfParameters,
+        PointerToArray numberOfParameters > Pointer > String: parameters,
+        Int32: size,
+        Unsigned32: unknown1,
+        Unsigned32: unknown2;
+
+    /* Call a named method that is in the current scope. Function arguments are popped from the stack */
+    EA_CallNamedFuncPop =
+        $Base: Instruction;
+        Unsigned8: functionNameConstantID;
+
+    /* Call a named method that is in the current scope. Has no arguments */
+    EA_CallNamedFunc =
+        $Base: Instruction;
+        Unsigned8: functionNameConstantID;
+
+    /* Call a named method that is in the current scope. Function arguments are popped from the stack */
+    EA_CallNamedMethodPop = 
+        $Base: Instruction,
+        Unsigned8: functionNameConstantID;
+
+/** Logic **/
+
+    Not         = $Base: Instruction; /* Pop a value from stack, convert it to boolean. Push the inverted value back to stack */
+    LessThan2   = $Base: Instruction; /* Pop two values from stack and check if one is less than another. Does work with strings. Result on stack */
+    Equals2     = $Base: Instruction; /* Pop two values from stack and check them for equality. Does work with types. Result on stack */
+    BitwiseXOr  = $Base: Instruction; /* Pop two values A,B from stack and calculate A xor B (bitwise). Result on stack. */
+    Greater     = $Base: Instruction; /* Pop two values A,B from stack and check if B is greater A (reverse stack order) */
+    StrictEqual = $Base: Instruction; /* Pop two values from stack and compare the two values using the Strict Equality Comparison Algorithm. Push the resulting Boolean value onto the stack. */
+    
+/** Object **/
+
+    /* Pops variable name and pushes the corresponding variable back to stack */
+    GetVariable = $Base: Instruction;
+
+    /* Pops variable name and value from the stack. Then set the variable to that value. */
+    SetVariable = $Base: Instruction;
+
+    /* get a property and push it to the stack */
+    GetProperty = $Base: Instruction;
+
+    /* set a property. Get value, name and object from stack */
+    SetProperty = $Base: Instruction;
+
+    /* Create a new object by calling it's constructor. Pops name and constructor arguments from stack */
+    NewObject = $Base: Instruction;
+
+    /* Initializes an object from the stack */
+    InitObject = $Base: Instruction;
+
+    /* Pops a value from the stack pushes it's type as a string to stack */
+    TypeOf = $Base: Instruction;
+    
+    /* get the member of a specific object. Result will be pushed to stack */
+    GetMember = $Base: Instruction;
+
+    /* Pop value, member and object from stack and set object.name = value. */
+    SetMember = $Base: Instruction;
+
+    /* Get a variable from the current object and push it to the stack */
+    EA_GetStringVar = 
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: variableName;
+
+    /* Pops an object from the stack and retrieves a member variable of that object which is pushed to stack */
+    EA_GetStringMember =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: memberVariableName;
+
+    /* Set a string variable in the current scope */
+    EA_SetStringVar =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: variableName;
+
+    EA_SetStringMember =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: memberVariableName;
+
+    /* Pop an object from stack and retrieve the member name from the pool. Push the member of the object to stack. */
+    EA_GetNamedMember =
+        $Base: Instruction,
+        Unsigned8: memberNameConstantID;
+
+/** Playback **/
+
+    /* NextFrame */
+    NextFrame = $Base: Instruction;
+
+    /* Start playback of the current object (must be sprite) */
+    Play = $Base: Instruction; 
+    
+    /* Stop playback of the current object (must be sprite) */
+    Stop = $Base: Instruction; 
+
+    /* Jump to a specific frame number of the current object (must be sprite) */
+    GotoFrame =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Int32: frameNumber;
+
+    /* Jump to a labeled frame (must be sprite) */
+    GotoLabel =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: frameLabelName;
+
+    /* Jump to a specific frame (label or number) and start playing or stop */
+    GotoFrame2 =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Unsigned8: parameter;
+
+/** Stack **/
+
+    /* Pop a value from the stack */
+    Pop = $Base: Instruction;
+
+    /* Pop a value from the stack and convert it to number push it back */
+    ToNumber = $Base: Instruction;
+
+    /* Pop a value from the stack and push it twice */
+    PushDuplicate = $Base: Instruction;
+
+    /* Push the current object to the stack */
+    EA_PushThis = $Base: Instruction;
+
+    /* Push an integer with value zero to the stack */
+    EA_PushZero = $Base: Instruction;
+
+    /* Push an integer with value one to the stack */
+    EA_PushOne = $Base: Instruction;
+
+    /* Push the current object to the stack */
+    EA_PushThisVar = $Base: Instruction;
+
+    /* Push the global object to the stack */
+    EA_PushGlobalVar = $Base: Instruction;
+
+    /* Push a zero variable to the stack */
+    EA_ZeroVar = $Base: Instruction;
+
+    /* Push a boolean with value true to the stack */
+    EA_PushTrue = $Base: Instruction;
+
+    /* Push a boolean with value false to the stack */
+    EA_PushFalse = $Base: Instruction;
+
+    /* Push a null value to the stack */
+    EA_PushNull = $Base: Instruction;
+
+    /* Push an undefined value to the stack */
+    EA_PushUndefined = $Base: Instruction;
+
+    /* Get multiple variables from the pool and push them to the stack */
+    PushData =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Unsigned32: numberOfConstantIDs,
+        PointerToArray numberOfConstantIDs > Unsigned32: constantIDArray;
+
+    /* Push a string to the stack */
+    EA_PushString =
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: value;
+
+    /* Read a constant from the pool and push it to stack */
+    EA_PushConstantByte =
+        $Base: Instruction,
+        Unsigned8: constantID;
+
+    /* Read the variable name from the pool and push that variable's value to the stack */
+    EA_PushValueOfVar =
+        $Base: Instruction,
+        Unsigned8: variableNameConstantID;
+
+    /* Push a float to the stack */
+    EA_PushFloat =
+        $Base: Instruction,
+        Float32: value;
+
+    /* Read a byte and push it to the stack */
+    EA_PushByte =
+        $Base: Instruction,
+        Unsigned8: value;
+
+    /* Read a short and push it to the stack */
+    EA_PushShort =
+        $Base: Instruction,
+        Unsigned16: value;
+
+    /* Push a register's value to the stack */
+    EA_PushRegister =
+        $Base: Instruction,
+        Unsigned8: register;
+
+/** String **/
+
+    StringConcat = $Base: Instruction; /* Pop two strings from the stack and concatenate them. Result on stack */
+    StringEquals = $Base: Instruction; /* Pop two strings from the stack and check if they are equal */
+
+/** Url **/
+
+    /* Used to get variables from the engine (?) */
+    GetURL = 
+        $Base: Instruction,
+        PaddingForAlignment > 4: align,
+        Pointer > String: target,
+        Pointer > String: url;
+
+    /* Used to get variables from the engine (?) (read url and target from stack) */
+    GetURL2 = $Base: Instruction;

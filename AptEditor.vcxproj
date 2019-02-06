@@ -132,7 +132,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tinyxml2.cpp" />
     <ClCompile Include="Util.cpp" />
-    <ClCompile Include="AptEditor.cpp" />
+    <ClCompile Include="AptToXml.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ActionHelper.hpp" />
@@ -147,6 +147,7 @@
     <ClInclude Include="AptAptParseUtilities.hpp" />
     <ClInclude Include="AptTypess.hpp" />
     <ClInclude Include="AptTypeDefinitionsParser.hpp" />
+    <ClInclude Include="AptToXmlHints.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -64,24 +64,28 @@ EditText =
 Font =
     $Base: Character,
     Pointer > String: name,
-    PointerToArray > GlyphID: glyphData; /* TODO: parse glyph data */
+    Unsigned32: numberOfGlyphs,
+    PointerToArray numberOfGlyphs > GlyphID: glyphData; /* TODO: parse glyph data */
 
 Button =
     $Base: Character,
     Unsigned32: unknown, /* always zero as far as I can see */
     Rect: bounds,
-    Unsigned32: triangleCount,
-    Unsigned32: vertexCount,
-    Unsigned32: vertexArrayAddress,
-    Unsigned32: triangleArrayAddress,
-    PointerToArray > ButtonRecord: buttonRecords,
-    PointerToArray > ButtonAction: buttonActions,
+    Unsigned32: numberOfTriangles,
+    Unsigned32: numberOfVertexes,
+    PointerToArray numberOfVertexes > Float32Vector2: vertexArray,
+    PointerToArray numberOfTriangles > Triangle: triangleArray,
+    Unsigned32: numberOfRecords,
+    PointerToArray numberOfRecords > ButtonRecord: buttonRecords,
+    Unsigned32: numberOfActions,
+    PointerToArray numberOfActions > ButtonAction: buttonActions,
     Unsigned32: unknown2; /* always zero as far as I can see */
 
 Sprite =
     $Base: Character,
-    PointerToArray > Frame: frames,
-    Unsigned32: pointer; //always zero, used at runtime
+    Unsigned32: numberOfFrames,
+    PointerToArray numberOfFrames > Frame: frames,
+    Unsigned32: pointer; /* always zero, used at runtime */
 
 Morph =
     $Base: Character,
@@ -90,14 +94,18 @@ Morph =
 
 Movie =
     $Base: Character,
-    PointerToArray > Frame: frames, /* offset of frame data */
+    Unsigned32: numberOfFrames,
+    PointerToArray numberOfFrames > Frame: frames, /* offset of frame data */
     Unsigned32: pointer, /* always zero, used at runtime */
-    PointerToArray > Pointer > Character: characters,  /* offset of character data */
+    Unsigned32: numberOfCharacters,
+    PointerToArray numberOfCharacters > Pointer > Character: characters,  /* offset of character data */
     Unsigned32: screenWidth,
     Unsigned32: screenHeight,
     Unsigned32: millisecondsPerFrame,  /* always 33 as far as I can see */
-    PointerToArray > Import: imports,  /* offset of imports data */
-    PointerToArray > Export: exports,  /* offset of exports data */
+    Unsigned32: numberOfImports,
+    PointerToArray numberOfImports > Import: imports,  /* offset of imports data */
+    Unsigned32: numberOfExports,
+    PointerToArray numberOfExports > Export: exports,  /* offset of exports data */
     Unsigned32: count; /* always zero, used at runtime */
 
 Image =
@@ -109,7 +117,8 @@ StaticText =
     Rect: bounds,
     Float32Matrix2x2: rotationAndScale,
     Float32Vector2: translation,
-    PointerToArray > TextRecord: records;
+    Unsigned32: numberOfRecords,
+    PointerToArray numberOfRecords > TextRecord: records;
 
 /* End derived from Character */
 
@@ -145,7 +154,7 @@ PlaceObject =
     Float32: ratio,
     Pointer > String: name,
     Int32: clipdepth,
-    Pointer > PointerToArray > ClipEvent: clipEvent;
+    Pointer > ClipEventArray: clipEvents;
 
 RemoveObject =
     $Base: FrameItem,
@@ -165,6 +174,11 @@ InitAction =
 GlyphID =
     Unsigned8: glyphID;
 
+Triangle =
+    Unsigned16: vertex1,
+    Unsigned16: vertex2,
+    Unsigned16: vertex3;
+
 ButtonRecord =
     Unsigned8: flags, /* matches with ButtonFlags */
     Unsigned24: reserved,
@@ -182,7 +196,8 @@ ButtonAction =
     Unsigned32: actionDataOffset; /* TODO: parse actionDataOffset */
 
 Frame =
-    PointerToArray > Pointer > FrameItem: frameItems;
+    Unsigned32: numberOfFrameItems,
+    PointerToArray numberOfFrameItems > Pointer > FrameItem: frameItems;
 
 Import =
     Pointer > String: movie,
@@ -194,13 +209,13 @@ Export =
     Pointer > String: name,
     Unsigned32: character;
 
+ClipEventArray =
+    Unsigned32: numberOfClipEvents,
+    PointerToArray numberOfClipEvents > ClipEvent: clipEvents;
+
 ClipEvent =
     Unsigned24: flags,
     Unsigned8: keyCode,
     Unsigned32: offsetToNext,
     Unsigned32: actionDataOffset; /* TODO: parse ClipEvent */
 
-Triangle =
-    Unsigned16: vertex1,
-    Unsigned16: vertex2,
-    Unsigned16: vertex3;

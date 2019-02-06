@@ -64,6 +64,9 @@
         "xtree": "cpp",
         "functional": "cpp",
         "unordered_map": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "mutex": "cpp",
+        "xthread": "cpp",
+        "thread": "cpp"
     }
 }

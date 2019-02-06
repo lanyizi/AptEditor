@@ -1,0 +1,171 @@
+Instruction =
+    Unsigned8: type,
+$Derive:
+    /* End the current instruction stream */
+    type 0x00 > End /
+    
+    /* Go to the next frame of the current object (must be sprite) */
+    type 0x04 > NextFrame /
+    
+    /* Go to the previous frame of the current object (must be sprite) */
+    type 0x05 > PrevFrame /
+    
+    /* Start playback of current object (must be sprite) */
+    type 0x06 > Play /
+    
+    /* Stop playback of current object (must be sprite) */
+    type 0x07 > Stop /
+    
+    type 0x08 > ToggleQuality /
+    type 0x09 > StopSounds /
+    
+    /* Basic arithmetic operations */
+    type 0x0A > Add /
+    type 0x0B > Subtract /
+    type 0x0C > Multiply /
+    type 0x0D > Divide /
+    
+    /* Basic logic operations */
+    type 0x0E > Equals /
+    type 0x0F > LessThan /
+    type 0x10 > And /
+    type 0x11 > Or /
+    type 0x12 > Not /
+    
+    /* Basic string operations */
+    type 0x13 > StringEquals /
+    type 0x14 > StringLength /
+    type 0x15 > SubString /
+    
+    /* Others */
+    type 0x17 > Pop /
+    type 0x18 > ToInteger /
+    type 0x1C > GetVariable /
+    type 0x1D > SetVariable /
+    type 0x20 > SetTarget2 /
+    type 0x21 > StringConcat /
+    type 0x22 > GetProperty /
+    type 0x23 > SetProperty /
+    type 0x24 > CloneSprite /
+    type 0x25 > RemoveSprite /
+    
+    /* Debug instruction */
+    type 0x26 > Trace /
+
+    type 0x27 > StartDragMovie /
+    type 0x28 > StopDragMovie /
+    type 0x29 > StringCompare /
+    type 0x2A > Throw /
+    type 0x2B > CastOp /
+    type 0x2C > ImplementsOp /
+    type 0x30 > Random /
+    type 0x31 > MbLength / /* MB is multibyte strings */
+    type 0x32 > Ord / /* CHAR to ASCII */
+    type 0x33 > Chr / /* ASCII to CHAR */
+    type 0x34 > GetTimer /
+    type 0x35 > MbSubString / /* MB is multibyte strings */
+    type 0x36 > MbOrd / /* MB is multibyte strings */
+    type 0x37 > MbChr / /* MB is multibyte strings */
+    type 0x3A > Delete /
+    type 0x3B > Delete2 /
+
+    /* Function instructions */
+    type 0x3C > DefineLocal /
+    type 0x3D > CallFunction /
+    type 0x3E > Return /
+    type 0x3F > Modulo /
+    type 0x40 > NewObject /
+    type 0x41 > Var /
+    type 0x42 > InitArray /
+    type 0x43 > InitObject /
+    type 0x44 > TypeOf /
+    type 0x45 > TargetPath /
+    type 0x46 > Enumerate /
+    type 0x47 > Add2 / /* does also handle strings */
+    type 0x48 > LessThan2 /
+    type 0x49 > Equals2 /
+    type 0x4A > ToNumber /
+    type 0x4B > ToString /
+    type 0x4C > PushDuplicate /
+    type 0x4D > StackSwap /
+    type 0x4E > GetMember /
+    type 0x4F > SetMember /
+    type 0x50 > Increment /
+    type 0x51 > Decrement /
+    type 0x52 > CallMethod /
+    type 0x53 > NewMethod /
+    type 0x54 > InstanceOf /
+    type 0x55 > Enumerate2 /
+
+    /* EA instructions */
+    type 0x56 > EA_PushThis /
+    type 0x58 > EA_PushGlobal /
+    type 0x59 > EA_PushZero /
+    type 0x5A > EA_PushOne /
+    type 0x5B > EA_CallFuncPop /
+    type 0x5C > EA_CallFunc /
+    type 0x5D > EA_CallMethodPop /
+    type 0x5E > EA_CallMethod /
+
+    /* Bitwise instructions */
+    type 0x60 > BitwiseAnd /
+    type 0x61 > BitwiseOr /
+    type 0x62 > BitwiseXOr /
+    type 0x63 > ShiftLeft /
+    type 0x64 > ShiftRight /
+    type 0x65 > ShiftRight2 /
+    type 0x66 > StrictEqual /
+    type 0x67 > Greater /
+    type 0x68 > StringGreater /
+    type 0x69 > Extends /
+
+    /* EA functions */
+    type 0x70 > EA_PushThisVar /
+    type 0x71 > EA_PushGlobalVar /
+    type 0x72 > EA_ZeroVar /
+    type 0x73 > EA_PushTrue /
+    type 0x74 > EA_PushFalse /
+    type 0x75 > EA_PushNull /
+    type 0x76 > EA_PushUndefined /
+    type 0x77 > TraceStart /
+    type 0x81 > GotoFrame /
+    type 0x83 > GetURL /
+    type 0x87 > SetRegister /
+    type 0x88 > ConstantPool /
+    type 0x8A > WaitFormFrame /
+    type 0x8B > SetTarget /
+    type 0x8C > GotoLabel /
+    type 0x8D > WaitForFrameExpr /
+    type 0x8E > DefineFunction2 /
+    type 0x8F > Try /
+    type 0x94 > With /
+    type 0x96 > PushData /
+    type 0x99 > BranchAlways /
+    type 0x9A > GetURL2 /
+    type 0x9B > DefineFunction /
+    type 0x9D > BranchIfTrue /
+    type 0x9E > CallFrame /
+    type 0x9F > GotoFrame2 /
+
+    /* EA instructions */
+    type 0xA1 > EA_PushString /
+    type 0xA2 > EA_PushConstantByte /
+    type 0xA3 > EA_PushConstantWord /
+    type 0xA4 > EA_GetStringVar /
+    type 0xA5 > EA_GetStringMember /
+    type 0xA6 > EA_SetStringVar /
+    type 0xA7 > EA_SetStringMember /
+    type 0xAE > EA_PushValueOfVar /
+    type 0xAF > EA_GetNamedMember /
+    type 0xB0 > EA_CallNamedFuncPop /
+    type 0xB1 > EA_CallNamedFunc /
+    type 0xB2 > EA_CallNamedMethodPop /
+    type 0xB3 > EA_CallNamedMethod /
+    type 0xB4 > EA_PushFloat /
+    type 0xB5 > EA_PushByte /
+    type 0xB6 > EA_PushShort /
+    type 0xB7 > EA_PushLong /
+    type 0xB8 > EA_BranchIfFalse /
+    type 0xB9 > EA_PushRegister /
+
+    type 0xFF > Padding;

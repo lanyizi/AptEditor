@@ -33,7 +33,7 @@
     <ClCompile Include="tinyxml2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AptEditor.cpp">
+    <ClCompile Include="AptToXml.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -72,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AptTypeDefinitionsParser.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AptToXmlHints.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

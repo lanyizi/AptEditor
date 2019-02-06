@@ -17,7 +17,7 @@ namespace Apt::AptParseUtilities {
                 }
             }
 
-            UnparsedData* getFullData() {
+            UnparsedData* getFullData() noexcept {
                 return this->source;
             }
 
@@ -42,6 +42,10 @@ namespace Apt::AptParseUtilities {
             
             UnparsedDataView subView(const std::size_t from) const {
                 return this->split(from).second;
+            }
+
+            std::size_t absolutePosition() const noexcept {
+                return this->viewPosition;
             }
 
         private:

@@ -4,6 +4,7 @@
 #include <ciso646>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <stdint.h>
 #include <limits>
 #include <type_traits>
@@ -73,6 +74,40 @@ inline std::string_view readUntil(std::string_view& from, const std::string_view
     auto textRead = from.substr(0, (std::min)(from.size(), from.find(delimiter)));
     from.remove_prefix((std::min)(from.size(), textRead.size() + delimiter.size()));
     return textRead;
+}
+
+template <typename... Arguments>
+std::string asString(Arguments&&... arguments) {
+    auto destination = std::ostringstream{};
+    (destination << ... << std::forward<Arguments>(arguments));
+    return destination.str();
+}
+
+inline std::string xmlEscape(const std::string_view src) {
+    auto destination = std::ostringstream{};
+    for (char ch : src) {
+        switch (ch) {
+        case '&':
+            destination << "&amp;";
+            break;
+        case '\'':
+            destination << "&apos;";
+            break;
+        case '"':
+            destination << "&quot;";
+            break;
+        case '<':
+            destination << "&lt;";
+            break;
+        case '>':
+            destination << "&gt;";
+            break;
+        default:
+            destination << ch;
+            break;
+        }
+    }
+    return destination.str();
 }
 
 inline uint32_t HexToDecimal(const char* str) {

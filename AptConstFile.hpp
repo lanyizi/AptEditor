@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 #include <variant>
 #include <algorithm>
@@ -29,7 +30,7 @@ namespace Apt::ConstFile
         const T& get() const { return std::get<T>(this->data); }
 
 		const ConstItemType type;
-        const std::variant<std::string, std::uint32_t, bool, float, std::int32_t> data;
+        const std::variant<std::nullptr_t, std::string, std::uint32_t, bool, float, std::int32_t> data;
     };
 
     struct SkippedUnknwonConstData {

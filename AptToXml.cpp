@@ -163,11 +163,10 @@ void readInstructions(AptObjectPool& pool, const Address startAddress,
 
 
 
-std::string aptToXml(const FileSystem::path aptFileName) {
-    const auto aptBaseName =
-        FileSystem::path{ aptFileName }.replace_extension().string();
-    const auto constData =
-        ConstFile::ConstData(readEntireFile(aptBaseName + ".const"));
+void aptToXml(const std::filesystem::path& aptFileName) {
+    const auto constFileName =
+        std::filesystem::path{ aptFileName }.replace_extension(".const");
+    const auto constData = ConstFile::ConstData(readEntireFile(constFileName));
     const auto entryOffset = constData.aptDataOffset;
 
     // auto data = AptFile::AptData{AptFile::DataSource{readEntireFile(aptFileName)}};
@@ -183,7 +182,7 @@ std::string aptToXml(const FileSystem::path aptFileName) {
 
     auto pool = AptObjectPool{};
     pool.dataSource.reset(readEntireFile(aptFileName));
-    Parser::readTypeDefinitions(preprocess("AptTypeDefinitionTest.txt"), pool);
+    Parser::readTypeDefinitions(preprocess("AptTypeDefinitions.txt"), pool);
 
     {
         auto reader = pool.getReaderAtOffset(entryOffset);
@@ -361,6 +360,6 @@ std::string aptToXml(const FileSystem::path aptFileName) {
     auto xmlOutput = std::ofstream{ aptFileName.string() + ".edited.xml" };
     xmlOutput << xmlString << std::endl;
 
-    return "";
+    return;
 }
 } // namespace Apt::AptEditor

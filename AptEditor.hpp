@@ -2,5 +2,5 @@
 #include <string>
 
 namespace Apt::AptEditor {
-std::string aptToXml(const std::filesystem::path aptFileName);
+void aptToXml(const std::filesystem::path& aptFileName);
 }

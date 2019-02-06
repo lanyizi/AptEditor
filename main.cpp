@@ -24,13 +24,12 @@ int main(int argc, char** argv)
 	}
 
 	try {
-		std::cout << Apt::AptEditor::aptToXml(filename) << std::endl;
-	}
+        Apt::AptEditor::aptToXml(filename);
+    }
 	catch(const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
-    system("pause");
     return 1;
 
     if (AptFile::Convert(filename))

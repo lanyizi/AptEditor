@@ -6,6 +6,7 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <iostream>
 
 #include "AptConstFile.hpp"
 #include "AptEditor.hpp"
@@ -23,6 +24,11 @@ using namespace AptTypes;
 
 const char* chooseAttributeName(const std::string& name) {
     return name.empty() ? "value" : name.c_str();
+}
+
+bool isRef(const AptType& object) {
+    return std::holds_alternative<AptTypePointer>(object.value) or
+           std::holds_alternative<PointerToArray>(object.value);
 }
 
 void writeObject(tinyxml2::XMLElement* node, const AptObjectPool& pool,
@@ -48,12 +54,16 @@ void writeNode(tinyxml2::XMLElement* node, const AptObjectPool& pool,
 void writeNode(tinyxml2::XMLElement* node, const AptObjectPool& pool,
                const std::string& name, const AptTypePointer& value) {
 
-    node->SetAttribute((name + "Address").c_str(), value.address);
+    if(value.address == 0) {
+        node->SetAttribute("type", "Null");
+    }
+
+    //node->SetAttribute("address".c_str(), value.address);
 
     // special handling for string: add a xml comment "hint"
     // TODO: add "hints" for other kind of objects as well,
     // when it looks neccessary.
-    if (value.address != 0 and value.typePointedTo == "String") {
+    /*if (value.address != 0 and value.typePointedTo == "String") {
         if (const auto found = pool.objectInstances.find(value.address);
             found != pool.objectInstances.end()) {
             const auto& stringPointed = std::get<std::string>(found->second.value);
@@ -67,11 +77,15 @@ void writeNode(tinyxml2::XMLElement* node, const AptObjectPool& pool,
             // move current node after comment
             node->Parent()->InsertAfterChild(stringHintComment, node);
         }
-    }
+    }*/
 }
 
 void writeNode(tinyxml2::XMLElement* node, const AptObjectPool& pool,
                const std::string& name, const PointerToArray& value) {
+    if(value.length == 0) {
+        node->SetAttribute("type", "EmptyArray");
+        return;
+    }
     return writeNode(node, pool, name, value.pointerToArray);
 }
 
@@ -80,9 +94,17 @@ void writeNode(tinyxml2::XMLElement* node, const AptObjectPool& pool,
 
     for (const auto& [memberName, member] : value) {
         auto* currentNode = node;
-        if (std::holds_alternative<AptType::MemberArray>(member.value)) {
+        const auto isRefOrAction = isRef(member) or memberName == "actionDataOffset";
+        const auto needNewNode =
+            std::holds_alternative<AptType::MemberArray>(member.value) or
+            isRefOrAction;
+
+        if (needNewNode) {
             auto* newNode =
                 node->GetDocument()->NewElement(member.baseTypeName.c_str());
+            if(isRefOrAction) {
+                newNode->SetName("Ref");
+            }
             node->InsertEndChild(newNode);
             currentNode = newNode;
             currentNode->SetAttribute("name", memberName.c_str());
@@ -102,7 +124,7 @@ void writeObject(tinyxml2::XMLElement* node, const AptObjectPool& pool,
         writeNode(node, pool, name, value);
     };
     std::visit(visitor, object.value);
-    if (object.typeName != object.baseTypeName) {
+    if (object.typeName != object.baseTypeName and not isRef(object)) {
         const auto& [typeTag, derivedTypeMap] =
             pool.types.at(object.baseTypeName).derivedTypes.value();
         node->SetAttribute(typeTag.c_str(), object.typeName.c_str());
@@ -228,10 +250,19 @@ void aptToXml(const std::filesystem::path& aptFileName) {
     }
 
     // merge jumpMap
-    auto referenceDescriptions =
+    auto references =
         AptToXmlHints::getReferenceDescriptions(pool, entryOffset);
     for (const auto& [source, destination] : destinationMap) {
-        referenceDescriptions.emplace(destination);
+        const auto& [destinationAddress, description] = destination;
+        references[destinationAddress] += 1;
+    }
+
+    auto endOfFunctions = std::map<Address, std::string>{};
+    for (const auto& [source, destination] : destinationMap) {
+        const auto& [destinationAddress, description] = destination;
+        if(description.find("DefineFunction") == 0) {
+            endOfFunctions.emplace(destination);
+        }
     }
 
     // check unparsed data
@@ -279,36 +310,37 @@ void aptToXml(const std::filesystem::path& aptFileName) {
     }
 
     auto xml = tinyxml2::XMLDocument{};
+    auto topLevelNodeMap = std::map<Address, tinyxml2::XMLElement*>{};
+    auto nodeMap = std::map<Address, tinyxml2::XMLElement*>{};
+
     xml.InsertFirstChild(xml.NewDeclaration());
     auto* aptDataNode = xml.NewElement("ParsedAptData");
     xml.InsertEndChild(aptDataNode);
     auto* parent = aptDataNode;
     auto arrayEnd = Address{ 0 };
+    auto arrayIndex = 0;
     for (const auto& [address, object] : pool.objectInstances) {
-        const auto referencesBegin = referenceDescriptions.begin();
-        const auto referencesBound = referenceDescriptions.upper_bound(address);
+        const auto referencesBegin = references.begin();
+        const auto referencesBound = references.upper_bound(address);
         const auto referenced = (referencesBegin != referencesBound);
-        auto endOfFunction = false;
-        const auto referenceWriter = [parent, &endOfFunction](const auto& data) {
-            const auto& [destinationAddress, information] = data;
-            const auto text =
-                asString(destinationAddress, " referenced by ", information);
-            AptToXmlHints::appendXmlComment(parent, text);
-            endOfFunction = (information.find("DefineFunction") == 0);
-        };
-        std::for_each(referencesBegin, referencesBound, referenceWriter);
-        referenceDescriptions.erase(referencesBegin, referencesBound);
+        const auto multipleReference =
+            std::distance(referencesBegin, referencesBound) > 1;
+        if(multipleReference) {
+            AptToXmlHints::appendXmlComment(parent, asString("Multiple reference on address ", address));
+            std::cerr << "Multiple reference on address " << address << std::endl;
+        }
+        references.erase(referencesBegin, referencesBound);
 
         if (const auto arrayMarker = pool.arrays.find(address);
             arrayMarker != pool.arrays.end()) {
             const auto [begin, pastTheEnd] = *arrayMarker;
-
+            
             auto* array = parent->GetDocument()->NewElement("Array");
             parent->InsertEndChild(array);
-            array->SetAttribute("startAddress", begin);
 
             parent = array;
             arrayEnd = arrayMarker->second;
+            arrayIndex = 0;
         }
 
         if (object.baseTypeName == "Instruction") {
@@ -320,19 +352,42 @@ void aptToXml(const std::filesystem::path& aptFileName) {
         }
 
         auto* node = parent->GetDocument()->NewElement(object.baseTypeName.c_str());
+        if(isRef(object)) {
+            node->SetName("Ref");
+            if(std::holds_alternative<AptTypePointer>(object.value)) {
+                if(std::get<AptTypePointer>(object.value).address == entryOffset) {
+                    node->SetAttribute("type", "AptMovieEntryPointPointer");
+                }
+            }
+        }
         parent->InsertEndChild(node);
-
-        // since <Array> will already show startAddress,
-        // normally we don't need to show address again
-        if ((referenced and (pool.arrays.count(address) == 0)) or
-            (destinationMap.count(address) > 0)) {
-            node->SetAttribute("address", address);
+        
+        // skip header
+        if(address != 0) {
+            // are we inside an array?
+            if(parent != aptDataNode) {
+                if (pool.arrays.count(address) > 0) {
+                    topLevelNodeMap.emplace(address, parent);
+                }
+                node->SetAttribute("arrayIndex", arrayIndex);
+                arrayIndex += 1;
+            }
+            // if it's not entryPoint...
+            else if(address != entryOffset){
+                topLevelNodeMap.emplace(address, node);
+            }
+            nodeMap.emplace(address, node);
         }
 
+        // special handling for entryPoint
+        if(address == entryOffset) {
+            aptDataNode->InsertAfterChild(aptDataNode->FirstChildElement(), node);
+        }
+        
         writeObject(node, pool, {}, object);
 
         if (object.baseTypeName == "Instruction") {
-            if (endOfFunction) {
+            if (endOfFunctions.count(address)) {
                 AptToXmlHints::appendXmlComment(parent, "End Of Function");
             }
 
@@ -353,6 +408,97 @@ void aptToXml(const std::filesystem::path& aptFileName) {
             arrayEnd = 0; // reset array end
         }
     }
+
+    auto parentMap = AptToXmlHints::getParentMap(pool, entryOffset);
+    for (const auto& [address, node] : topLevelNodeMap) {
+        if(address == entryOffset) {
+            continue;
+        }
+        const auto& [parentAddress, parentPath] = parentMap.at(address);
+        auto* parentNode = nodeMap.at(parentAddress);
+
+        auto findNode = [](tinyxml2::XMLElement* parentNode,
+                           const std::string_view name) -> tinyxml2::XMLElement* {
+            for (auto* subNode = parentNode->FirstChildElement(); subNode != nullptr;
+                 subNode = subNode->NextSiblingElement()) {
+                if (const auto* value = subNode->Attribute("name");
+                    value != nullptr and name == value) {
+                    return subNode;
+                }
+            }
+            return nullptr;
+        };
+
+        for(const auto& parentPathItem : parentPath) {
+            auto* next = findNode(parentNode, parentPathItem);
+            if (next == nullptr) {
+                throw std::logic_error{ "Shouldn't happen!" };
+            }
+
+            parentNode = next;
+        }
+
+        parentNode->InsertEndChild(node);
+    }
+
+    // compact
+    auto toBeErased = std::vector<tinyxml2::XMLElement*>{};
+    for (const auto& [address, node] : topLevelNodeMap) {
+        const auto charPointerEqualsTo = [](const char* pointer,
+                                            const std::string_view text) {
+            return pointer != nullptr and pointer == text;
+        };
+        
+        if (charPointerEqualsTo(node->Name(), "Ref")) {
+            continue;
+        }
+
+        const auto getParentElement = [](tinyxml2::XMLElement* element) {
+            auto* upper = element->Parent();
+            if (upper == nullptr) {
+                throw std::logic_error{ "element does not have parent" };
+            }
+            auto* upperElement = upper->ToElement();
+            if (upperElement == nullptr) {
+                throw std::logic_error{ "element parent is not element" };
+            }
+            return upperElement;
+        };
+
+        auto* parentNode = getParentElement(node);
+        auto previousWasEmpty = false;
+        while (charPointerEqualsTo(parentNode->Name(), "Ref")) {
+            auto* upperParentNode = getParentElement(parentNode);
+            upperParentNode->InsertEndChild(node);
+            if (const auto* name = parentNode->Attribute("name"); name != nullptr) {
+                node->SetAttribute("name", name);
+            }
+            if (const auto* index = parentNode->Attribute("arrayIndex");
+                index != nullptr) {
+                node->SetAttribute("arrayIndex", index);
+            }
+
+            const auto singleChildren =
+                parentNode->FirstChildElement() == parentNode->LastChildElement();
+            const auto isEmpty =
+                parentNode->NoChildren() or (singleChildren and previousWasEmpty);
+            if (isEmpty) {
+                toBeErased.emplace_back(parentNode);
+            }
+            // parentNode might be dangling now!!!
+
+            previousWasEmpty = isEmpty;
+            parentNode = upperParentNode;
+        }
+    }
+
+    //move all dead nodes to same location
+    auto* placeHolderNode = xml.NewElement("Placeholder");
+    aptDataNode->InsertEndChild(placeHolderNode);
+    for (auto* deadRefElement : toBeErased) {
+        placeHolderNode->InsertEndChild(deadRefElement);
+    }
+    aptDataNode->DeleteChild(placeHolderNode);
 
     tinyxml2::XMLPrinter printer;
     xml.Accept(&printer);

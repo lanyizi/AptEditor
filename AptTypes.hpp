@@ -151,7 +151,7 @@ struct AptType {
         return memberTotalSize;
     }
 
-    template<typename T>
+    template <typename T>
     T getNumericValue() const {
         auto result = T{};
         const auto assignmentVisitor = [&result](const auto& value) {
@@ -168,6 +168,43 @@ struct AptType {
         };
         std::visit(assignmentVisitor, this->value);
         return result;
+    }
+
+    using NameStack = std::vector<std::string>;
+    template <typename Self, typename Visitor>
+    static void forEachRecursive(Self& self, Visitor& visitor, const NameStack& nameStack) {
+        if (not std::holds_alternative<MemberArray>(self.value)) {
+            auto realVisitor = [&visitor, &nameStack](const auto& value) {
+                return visitor(value, nameStack);
+            };
+            std::visit(realVisitor, self.value);
+            return;
+        }
+
+        auto newNameStack = nameStack;
+        newNameStack.emplace_back();
+        for (const auto& [name, member] : std::get<MemberArray>(self.value)) {
+            newNameStack.back() = name;
+            forEachRecursive(member, visitor, newNameStack);
+        }
+    }
+
+    template <typename Visitor>
+    void forEachRecursive(Visitor&& visitor, const std::string_view name = {}) const {
+        auto nameStack = NameStack{};
+        if (not name.empty()) {
+            nameStack.emplace_back(name);
+        }
+        this->forEachRecursive(*this, std::forward<Visitor>(visitor), nameStack);
+    }
+
+    template <typename Visitor>
+    void forEachRecursive(Visitor&& visitor, const std::string_view name = {}) {
+        auto nameStack = NameStack{};
+        if (not name.empty()) {
+            nameStack.emplace_back(name);
+        }
+        this->forEachRecursive(*this, std::forward<Visitor>(visitor), nameStack);
     }
 
     std::string typeName;
@@ -442,9 +479,9 @@ struct AptObjectPool {
     }
 
     void fetchPointedObjects(const AptType& source) {
-
-        if (source.typeName == "Pointer") {
-            const auto& pointer = std::get<AptTypePointer>(source.value);
+        auto fetching = std::vector<Address>{};
+        const auto pointerHandler = [this, &fetching](const auto& visitor,
+                                                      const AptTypePointer& pointer) {
             const auto& typePointedTo = this->getType(pointer.typePointedTo);
 
             if (pointer.address == 0) {
@@ -452,12 +489,18 @@ struct AptObjectPool {
                 return;
             }
 
+            // avoid infinite loop when apt objects have circular references
+            if (std::find(fetching.cbegin(), fetching.cend(), pointer.address) !=
+                fetching.end()) {
+                return; // skip objects already being fetched
+            }
+
             if (const auto existing = this->objectInstances.find(pointer.address);
                 existing != this->objectInstances.end()) {
                 const auto& [address, object] = *existing;
                 // if an object already exists in the same location, check if they are
                 // of same type, or if existing object is derived from pointedToType
-                if ((not isSameOrDerivedFrom(object, typePointedTo.typeName))) {
+                if (not this->isSameOrDerivedFrom(object, typePointedTo.typeName)) {
                     throw std::runtime_error{ "Another type already exists here: " +
                                               object.typeName };
                 }
@@ -468,59 +511,51 @@ struct AptObjectPool {
                                    pointer.address);
             }
 
-            // avoid infinite loop when apt objects have circular references
-            const auto& fetching = this->objectInstances.at(pointer.address);
-            if (const auto alreadyFetching = this->fetching.find(pointer.address);
-                alreadyFetching != this->fetching.end()) {
-                if (const auto& [address, typeName] = *alreadyFetching;
-                    typeName == fetching.typeName) {
-                    return; // skip objects already being fetched
-                }
-            }
+            fetching.emplace_back(pointer.address);
+            const auto& next = this->objectInstances.at(pointer.address);
+            next.forEachRecursive(std::bind(visitor, visitor, std::placeholders::_1));
+        };
 
-            this->fetching.emplace(pointer.address, fetching.typeName);
-            return fetchPointedObjects(fetching);
-        }
-        else if (source.typeName == "PointerToArray") {
-
-            const auto& [length, lengthName, pointerValue] =
-                std::get<PointerToArray>(source.value);
+        const auto arrayHandler = [this](const auto& visitor,
+                                         const PointerToArray& array) {
+            const auto& [length, lengthName, pointerValue] = array;
             if (length == PointerToArray::unsetLength) {
                 throw std::runtime_error{ "Array size not set!" };
             }
             const auto elementSize = this->getType(pointerValue.typePointedTo).size();
 
-            auto currentPointer =
-                this->getType("Pointer > " + pointerValue.typePointedTo);
-            auto& currentPointerAddress =
-                std::get<AptTypePointer>(currentPointer.value).address;
-
             const auto begin = pointerValue.address;
             const auto end = pointerValue.address + length * elementSize;
 
-            for (currentPointerAddress = begin; currentPointerAddress < end;
-                 currentPointerAddress += elementSize) {
-                this->fetchPointedObjects(currentPointer);
+            auto currentPointer = pointerValue;
+            for (currentPointer.address = begin; currentPointer.address < end;
+                 currentPointer.address += elementSize) {
+                visitor(visitor, currentPointer);
             }
 
             // save array metadata
             this->insertArrayData(begin, end);
-        }
-        else {
-            if (std::holds_alternative<AptType::MemberArray>(source.value)) {
-                const auto& members = std::get<AptType::MemberArray>(source.value);
-                for (const auto& [memberName, member] : members) {
-                    this->fetchPointedObjects(member);
-                }
+        };
+
+        const auto visitor = [pointerHandler, arrayHandler](const auto& self,
+                                                            const auto& value) {
+            using Type = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Type, AptTypePointer>) {
+                pointerHandler(self, value);
             }
-        }
+            else if constexpr (std::is_same_v<Type, PointerToArray>) {
+                arrayHandler(self, value);
+            }
+        };
+
+        source.forEachRecursive(std::bind(visitor, visitor, std::placeholders::_1));
     }
 
     DataSource dataSource;
     TypeDataMap types;
     std::map<Address, AptType> objectInstances;
     std::map<Address, Address> arrays; //(begin address, past the end address)
-    std::map<Address, std::string> fetching;
+    // std::map<Address, std::string> fetching;
 };
 
 } // namespace Apt::AptTypes

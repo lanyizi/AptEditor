@@ -1,6 +1,7 @@
 // provide xml comment hints for AptToXml
 #pragma once
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -24,67 +25,23 @@ tinyxml2::XMLNode* appendXmlComment(tinyxml2::XMLNode* parent,
     return parent->InsertEndChild(node);
 }
 
-using References = std::multimap<AptTypes::Address, std::string>;
+using References = std::map<AptTypes::Address, std::size_t>;
 References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
                                     const AptTypes::Address entryOffset) {
     auto references = References{};
 
-    using Levels = std::vector<std::string>;
-
-    const auto forAll = [](const auto self,
-                           const auto& current,
-                           const auto visitorWithScope,
-                           const Levels& currentChunk) {
-        using MemberArray = AptTypes::AptType::MemberArray;
-        if (not std::holds_alternative<MemberArray>(current.value)) {
-            const auto visitor = [&visitorWithScope,
-                                  &currentChunk](const auto& value) {
-                return visitorWithScope(value, currentChunk);
-            };
-            std::visit(visitor, current.value);
-            return;
-        }
-
-        const auto& array = std::get<MemberArray>(current.value);
-        for (const auto& [name, member] : array) {
-            auto nextScope = currentChunk;
-            nextScope.emplace_back(name);
-            self(self, member, visitorWithScope, nextScope);
-        }
-    };
+    using Levels = AptTypes::AptType::NameStack;
 
     using Chunks = std::vector<std::pair<AptTypes::Address, Levels>>;
     const auto setter = [&references](const AptTypes::Address targetAddress,
                                       const Chunks& stack) {
-        if (stack.empty()) {
-            return;
-        }
-
-        static constexpr auto arrow = std::string_view{ u8" \u2190 " };
-        auto referenceData = std::ostringstream{};
-        for (auto i = stack.size(); i > 0; --i) {
-            const auto& [address, LevelList] = stack.at(i - 1);
-
-            referenceData << "[" << address << "]";
-            for (auto j = std::size_t{ 0 }; j < LevelList.size(); ++j) {
-                referenceData << LevelList.at(j);
-                if (j + 1 != LevelList.size()) {
-                    referenceData << ".";
-                }
-            }
-
-            if (i - 1 != 0) {
-                referenceData << arrow;
-            }
-        }
-
-        references.emplace(targetAddress, referenceData.str());
+        references[targetAddress] += 1;
     };
 
-    const auto visitor = [&pool, &setter, forAll](const auto self,
-                                                  const auto& value,
-                                                  const Levels& levels,
-                                                  const Chunks& chunks) {
+    const auto visitor = [&pool, &setter](const auto self,
+                                          const auto& value,
+                                          const Levels& levels,
+                                          const Chunks& chunks) {
         using Type = std::decay_t<decltype(value)>;
 
         const auto getMergedChunk = [](Chunks chunks, const Levels& levels) {
@@ -103,14 +60,12 @@ References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
             return std::any_of(chunks.begin(), chunks.end(), containsCurrentAddress);
         };
 
-        const auto continueToVisit = [forAll](const auto& visitorSelf,
-                                              const AptTypes::AptType& next,
-                                              const Chunks& currentChunks) {
-            const auto nextVisitor = [visitorSelf, &currentChunks](
-                                         const auto& value, const Levels& levels) {
-                return visitorSelf(visitorSelf, value, levels, currentChunks);
+        const auto getNextVisitor = [](const auto& nextVisitor,
+                                       const Chunks& currentChunks) {
+            return [nextVisitor, &currentChunks](const auto& value,
+                                                 const Levels& levels) {
+                return nextVisitor(nextVisitor, value, levels, currentChunks);
             };
-            forAll(forAll, next, nextVisitor, {});
         };
 
         if constexpr (std::is_same_v<Type, std::uint32_t>) {
@@ -141,8 +96,7 @@ References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
                 }
                 auto theseChunks = currentChunks;
                 theseChunks.emplace_back(address, Levels{ instruction.typeName });
-
-                continueToVisit(self, instruction, theseChunks);
+                instruction.forEachRecursive(getNextVisitor(self, theseChunks));
             }
         }
 
@@ -170,7 +124,8 @@ References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
                 newChunks.emplace_back(pointerToArray.address,
                                        Levels{ asString("ArrayElement#", i) });
 
-                continueToVisit(self, pool.objectInstances.at(address), newChunks);
+                const auto& next = pool.objectInstances.at(address);
+                next.forEachRecursive(getNextVisitor(self, newChunks));
             }
 
             return;
@@ -193,7 +148,7 @@ References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
             const auto& next = pool.objectInstances.at(value.address);
             currentChunks.emplace_back(value.address, Levels{ next.typeName });
 
-            continueToVisit(self, next, currentChunks);
+            next.forEachRecursive(getNextVisitor(self, currentChunks));
         }
     };
 
@@ -201,9 +156,139 @@ References getReferenceDescriptions(const AptTypes::AptObjectPool& pool,
                                                      const Levels& scope) {
         return visitor(visitor, value, scope, { { entryOffset, { "EntryPoint" } } });
     };
-    forAll(forAll, pool.objectInstances.at(entryOffset), firstVisitor, {});
+    pool.objectInstances.at(entryOffset).forEachRecursive(firstVisitor);
 
     return references;
+}
+
+using ParentMap = std::map<AptTypes::Address, std::pair<AptTypes::Address, AptTypes::AptType::NameStack>>;
+ParentMap getParentMap(const AptTypes::AptObjectPool& pool,
+                        const AptTypes::Address entryOffset) {
+    auto parentMap = ParentMap{};
+
+    using AddressStack = std::vector<AptTypes::Address>;
+    const auto setter = [&parentMap](const AptTypes::Address targetAddress,
+                                     const AptTypes::AptType::NameStack& nameStack,
+                                     const AddressStack& addressStack) {
+        if(parentMap.count(targetAddress) > 0) {
+            throw std::runtime_error{ "Unknown case!" };
+        }
+        parentMap.emplace(targetAddress, std::pair{ addressStack.back(), nameStack });
+    };
+
+    const auto visitor = [&pool, &setter](const auto self,
+                                          const auto& value,
+                                          const auto& nameStack,
+                                          const AddressStack& addressStack) {
+        using Type = std::decay_t<decltype(value)>;
+
+        const auto hasCircularReferences =
+            [& stack = addressStack](const AptTypes::Address address) {
+                return std::find(stack.begin(), stack.end(), address) !=
+                       stack.end();
+            };
+
+        const auto getNextVisitor = [](const auto& nextVisitor,
+                                       const AddressStack& addressStack) {
+            return std::bind(nextVisitor,
+                             nextVisitor,
+                             std::placeholders::_1,
+                             std::placeholders::_2,
+                             std::cref(addressStack));
+        };
+
+        if constexpr (std::is_same_v<Type, std::uint32_t>) {
+            if (nameStack.empty() or nameStack.back() != "actionDataOffset") {
+                return;
+            }
+
+            if (value == 0) {
+                // skip null pointer
+                return;
+            }
+
+            const auto beginAddress = value;
+            const auto pastTheEndAddress = pool.arrays.at(beginAddress);
+
+            // references for instruction array
+            setter(beginAddress, nameStack, addressStack);
+
+            const auto begin = pool.objectInstances.lower_bound(beginAddress);
+            const auto end = pool.objectInstances.lower_bound(pastTheEndAddress);
+
+            auto newAddressStack = addressStack;
+            newAddressStack.emplace_back();
+            for (auto iterator = begin; iterator != end; ++iterator) {
+                const auto& [address, instruction] = *iterator;
+                // break circular reference loop
+                if (hasCircularReferences(address)) {
+                    return;
+                }
+                newAddressStack.back() = address;
+                instruction.forEachRecursive(getNextVisitor(self, newAddressStack));
+            }
+        }
+
+        if constexpr (std::is_same_v<Type, AptTypes::PointerToArray>) {
+            if (value.length == 0) {
+                // skip empty array
+                return;
+            }
+
+            const auto& pointerToArray = value.pointerToArray;
+
+            // references for array
+            setter(pointerToArray.address, nameStack, addressStack);
+
+            const auto typeSize = pool.getType(pointerToArray.typePointedTo).size();
+            auto newAddressStack = addressStack;
+            newAddressStack.emplace_back();
+            for (auto i = AptTypes::Address{ 0 }; i < value.length; ++i) {
+                const auto address = pointerToArray.address + i * typeSize;
+                // break circular reference loop
+                if (hasCircularReferences(address)) {
+                    continue;
+                }
+
+                newAddressStack.back() = address;
+
+                const auto& next = pool.objectInstances.at(address);
+                next.forEachRecursive(getNextVisitor(self, newAddressStack));
+            }
+
+            return;
+        }
+
+        if constexpr (std::is_same_v<Type, AptTypes::AptTypePointer>) {
+            if (value.address == 0) {
+                // skip null pointer
+                return;
+            }
+
+            // break circular reference loop
+            if (hasCircularReferences(value.address)) {
+                return;
+            }
+
+            setter(value.address, nameStack, addressStack);
+
+            auto newAddressStack = addressStack;
+            newAddressStack.emplace_back(value.address);
+            
+            const auto& next = pool.objectInstances.at(value.address);
+
+            next.forEachRecursive(getNextVisitor(self, newAddressStack));
+        }
+    };
+
+    const auto firstVisitor = std::bind(visitor,
+                                        visitor,
+                                        std::placeholders::_1,
+                                        std::placeholders::_2,
+                                        AddressStack{ entryOffset });
+    pool.objectInstances.at(entryOffset).forEachRecursive(firstVisitor);
+
+    return parentMap;
 }
 
 std::string hintForConstantID(const ConstFile::ConstData& constData,
